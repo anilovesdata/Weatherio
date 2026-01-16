@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Optimal Plant Time</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<h2>Check Planting Weather & Draw Your Field</h2>
+
+<button onclick="getLocation()">Use My Location</button>
+<button id="savePolygon">Save Polygon</button>
+
+<pre id="result"></pre>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script>
+    let map;
+    let drawnItems = new L.FeatureGroup();
+    let lastLayer = null;
+    let plantingAdvice = ""; // Keeps advice visible
+
+    function initMap(lat = 9.0820, lon = 8.6753, zoom = 6) {
+        if (map) {
+            map.setView([lat, lon], zoom);
+            return;
+        }
+
+        map = L.map('map').setView([lat, lon], zoom);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            draw: { marker: false, polyline: false, circle: false, rectangle: false, circlemarker: false },
+            edit: { featureGroup: drawnItems }
+        });
+        map.addControl(drawControl);
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            if (lastLayer) drawnItems.removeLayer(lastLayer);
+            lastLayer = e.layer;
+            drawnItems.addLayer(lastLayer);
+        });
+    }
+
+    async function getLocation() {
+        if (!navigator.geolocation) {
+            document.getElementById('result').textContent = "Geolocation not supported";
+            initMap();
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                const resultEl = document.getElementById('result');
+                resultEl.textContent = `Your location: ${lat.toFixed(5)}, ${lon.toFixed(5)}\n\nFetching optimal planting advice...`;
+
+                try {
+                    const res = await fetch(`/weather?latitude=${lat}&longitude=${lon}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+
+                    plantingAdvice = "=== Optimal Planting Time ===\n";
+                    plantingAdvice += `Recommendation: ${data.recommendation || 'N/A'}\n`;
+                    plantingAdvice += `Advice: ${data.advice || 'No details'}\n`;
+
+                    if (data.next_7_days_analysis) {
+                        plantingAdvice += `Avg Temp (7 days): ${data.next_7_days_analysis.avg_temp}°C\n`;
+                        plantingAdvice += `Total Rain (7 days): ${data.next_7_days_analysis.total_rainfall_mm}mm\n`;
+                        plantingAdvice += `Rainy Days: ${data.next_7_days_analysis.rainy_days_count}\n`;
+                    }
+
+                    resultEl.textContent = plantingAdvice + "\n\nDraw your field & save to check crop health ↓";
+                    initMap(lat, lon, 13); // Center map properly
+                } catch (err) {
+                    resultEl.textContent += `\nError: ${err.message}`;
+                }
+            },
+            (err) => {
+                document.getElementById('result').textContent = `Location error: ${err.message}`;
+                initMap();
+            }
+        );
+    }
+
+    document.getElementById('savePolygon').onclick = async () => {
+        if (!lastLayer) {
+            alert("Draw a polygon first!");
+            return;
+        }
+
+        const geojson = lastLayer.toGeoJSON();
+        if (geojson.geometry?.coordinates?.[0]) {
+            geojson.geometry.coordinates[0] = geojson.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+        }
+
+        try {
+            const response = await fetch('/create-polygon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geo_json: geojson })
+            });
+
+            const data = await response.json();
+
+            let resultText = plantingAdvice || "Click 'Use My Location' first for planting advice.\n\n";
+
+            resultText += `Polygon saved! ID: ${data.poly_id || 'undefined'}`;
+
+            if (data.poly_id) {
+                resultText += `\n\nFetching crop health...`;
+                document.getElementById('result').textContent = resultText;
+
+                const healthRes = await fetch(`/crop-health?poly_id=${data.poly_id}`);
+                const healthData = await healthRes.json();
+
+                resultText += `\n\n=== Crop Health ===\n`;
+                if (healthData.message) {
+                    resultText += `${healthData.message}\n${healthData.tip || ''}`;
+                } else {
+                    resultText += `Status: ${healthData.health_status || 'Unknown'}\n`;
+                    resultText += `NDVI: ${healthData.ndvi_mean || 'N/A'}\n`;
+                    resultText += `Advice: ${healthData.advice || 'No advice'}\n`;
+                    if (healthData.satellite_date) {
+                        const date = new Date(healthData.satellite_date * 1000);
+                        resultText += `Image from: ${date.toLocaleDateString()}`;
+                    }
+                }
+            }
+
+            document.getElementById('result').textContent = resultText;
+
+        } catch (err) {
+            document.getElementById('result').textContent += `\nError: ${err.message}`;
+        }
+    };
+
+    // Load map on page start
+    initMap();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,110 @@
+:root {
+    --primary: #6B48FF;
+    --primary-dark: #4A2ECC;
+    --accent: #00F5D4;
+    --bg-dark: #0F0E17;
+    --bg-card: #1A1A2E;
+    --text-light: #E0E0FF;
+    --text-muted: #A0A0CC;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, #141427 100%);
+    color: var(--text-light);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    color: var(--accent);
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
+}
+
+h2 {
+    text-align: center;
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+}
+
+.controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 0.8rem 1.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+#getLocationBtn {
+    background: var(--primary);
+    color: white;
+}
+
+#getLocationBtn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(107, 72, 255, 0.5);
+}
+
+#savePolygon {
+    background: var(--accent);
+    color: #0F0E17;
+}
+
+#savePolygon:hover {
+    background: #00d9b8;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 245, 212, 0.5);
+}
+
+#result {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    white-space: pre-wrap;
+    font-family: 'Consolas', monospace;
+    color: var(--text-muted);
+    border: 1px solid rgba(107, 72, 255, 0.2);
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+#map {
+    height: 65vh;
+    border-radius: 16px;
+    border: 2px solid rgba(107, 72, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    margin-top: 1rem;
+}
+
+.loading {
+    color: var(--accent);
+    font-style: italic;
+}
